@@ -1,4 +1,9 @@
-(() => {
+(async () => {
+  // Supabase Configuration
+  const SUPABASE_URL = 'https://YOUR_SUPABASE_URL.supabase.co';
+  const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
   const STORAGE_KEY = 'persediaan-erd-v1';
   const entityNames = { barang: 'Barang', kategori: 'Kategori', pemasok: 'Pemasok', masuk: 'Transaksi masuk', keluar: 'Transaksi keluar' };
   const viewDetails = {
@@ -49,7 +54,7 @@
   const formFields = document.getElementById('formFields');
   const formError = document.getElementById('formError');
   const appShell = document.getElementById('appShell');
-  let store = loadStore();
+  let store = emptyStore();
   let currentView = 'ringkasan';
   let editingId = null;
   let searchQuery = '';
@@ -58,26 +63,40 @@
     return { categories: [], suppliers: [], items: [], incoming: [], outgoing: [] };
   }
 
-  function loadStore() {
+  async function loadStore() {
     try {
-      const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
-      if (!parsed || typeof parsed !== 'object') return emptyStore();
-      const initial = emptyStore();
-      return Object.fromEntries(Object.keys(initial).map((key) => [key, Array.isArray(parsed[key]) ? parsed[key] : []]));
-    } catch {
+      const [
+        { data: categories, error: errCategories },
+        { data: suppliers, error: errSuppliers },
+        { data: items, error: errItems },
+        { data: incoming, error: errIncoming },
+        { data: outgoing, error: errOutgoing }
+      ] = await Promise.all([
+        supabase.from('categories').select('*'),
+        supabase.from('suppliers').select('*'),
+        supabase.from('items').select('*'),
+        supabase.from('incoming').select('*'),
+        supabase.from('outgoing').select('*')
+      ]);
+
+      if (errCategories || errSuppliers || errItems || errIncoming || errOutgoing) {
+        throw new Error('Gagal memuat data dari database.');
+      }
+
+      return {
+        categories: categories || [],
+        suppliers: suppliers || [],
+        items: items || [],
+        incoming: incoming || [],
+        outgoing: outgoing || []
+      };
+    } catch (error) {
+      console.error(error);
+      announce('Gagal memuat data.');
       return emptyStore();
     }
   }
 
-  function persist() {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
-      return true;
-    } catch {
-      announce('Penyimpanan gagal. Periksa ruang penyimpanan browser.');
-      return false;
-    }
-  }
 
   function announce(message) { document.getElementById('statusMessage').textContent = message; }
   function makeId() { return globalThis.crypto?.randomUUID?.() || `rec-${Date.now()}-${Math.random().toString(16).slice(2)}`; }
@@ -109,12 +128,13 @@
     return row?.name || 'Data tidak ditemukan';
   }
 
-  function setView(view) {
+  async function setView(view) {
     if (view !== 'ringkasan' && !entityNames[view]) return;
     currentView = view;
     searchQuery = '';
     document.getElementById('menuToggle').setAttribute('aria-expanded', 'false');
     appShell.classList.remove('is-nav-open');
+    store = await loadStore();
     render();
   }
 
@@ -468,48 +488,41 @@
     return values;
   }
 
-  function applyTransaction(view, values) {
-    const collection = collectionFor(view);
-    const previous = editingId ? store[collection].find((item) => item.id === editingId) : null;
-    const balances = new Map(store.items.map((item) => [item.id, Number(item.stock) || 0]));
-    const direction = view === 'masuk' ? 1 : -1;
-    if (previous) balances.set(previous.itemId, (balances.get(previous.itemId) || 0) - direction * Number(previous.quantity));
-    const currentBalance = balances.get(values.itemId);
-    if (currentBalance === undefined) throw new Error('Barang yang dipilih tidak ditemukan.');
-    if (direction < 0 && Number(values.quantity) > currentBalance) throw new Error(`Stok tersedia hanya ${formatNumber(currentBalance)}. Kurangi jumlah barang keluar.`);
-    balances.set(values.itemId, currentBalance + direction * Number(values.quantity));
-    if ([...balances.values()].some((balance) => balance < 0)) {
-      throw new Error('Perubahan transaksi akan membuat stok negatif. Periksa saldo barang terkait.');
-    }
-    return balances;
-  }
 
-  function saveRecord(event) {
+  async function saveRecord(event) {
     event.preventDefault();
     const view = currentView;
     try {
       const values = readForm(view);
-      const nextBalances = view === 'masuk' || view === 'keluar' ? applyTransaction(view, values) : null;
-      const collection = collectionFor(view);
-      const previous = editingId ? store[collection].find((item) => item.id === editingId) : null;
-      const record = { ...values, id: editingId || makeId() };
-      store[collection] = editingId ? store[collection].map((item) => item.id === editingId ? record : item) : [...store[collection], record];
-      if (nextBalances) store.items = store.items.map((item) => ({ ...item, stock: nextBalances.get(item.id) ?? item.stock }));
-      if (!persist()) {
-        store[collection] = editingId ? store[collection].map((item) => item.id === editingId ? previous : item) : store[collection].filter((item) => item.id !== record.id);
-        if (nextBalances) store = loadStore();
-        return;
+      // Removed optimistic application as Supabase trigger will handle it
+      // const nextBalances = view === 'masuk' || view === 'keluar' ? applyTransaction(view, values) : null;
+
+      const collectionName = { kategori: 'categories', pemasok: 'suppliers', barang: 'items', masuk: 'incoming', keluar: 'outgoing' }[view];
+
+      let error;
+      if (editingId) {
+        const { error: updateError } = await supabase.from(collectionName).update(values).eq('id', editingId);
+        error = updateError;
+      } else {
+        const { error: insertError } = await supabase.from(collectionName).insert([values]);
+        error = insertError;
       }
+
+      if (error) {
+        throw new Error(error.message || 'Gagal menyimpan data ke database.');
+      }
+
       dialog.close();
       announce(`${entityNames[view]} berhasil ${editingId ? 'diperbarui' : 'ditambahkan'}.`);
       editingId = null;
+      store = await loadStore();
       render();
     } catch (error) {
       formError.textContent = error.message;
     }
   }
 
-  function deleteRecord(view, id) {
+  async function deleteRecord(view, id) {
     const collection = collectionFor(view);
     const record = store[collection].find((item) => item.id === id);
     if (!record) return;
@@ -523,6 +536,7 @@
       return;
     }
     if (!window.confirm(`Hapus ${entityNames[view].toLowerCase()} ini? Tindakan ini tidak dapat dibatalkan.`)) return;
+
     if (view === 'masuk' || view === 'keluar') {
       const item = store.items.find((entry) => entry.id === record.itemId);
       if (item) {
@@ -531,16 +545,19 @@
           announce('Transaksi tidak dapat dihapus karena akan membuat stok negatif.');
           return;
         }
-        item.stock = nextStock;
       }
     }
-    store[collection] = store[collection].filter((item) => item.id !== id);
-    if (!persist()) {
-      store = loadStore();
-      render();
+
+    const collectionName = { kategori: 'categories', pemasok: 'suppliers', barang: 'items', masuk: 'incoming', keluar: 'outgoing' }[view];
+    const { error } = await supabase.from(collectionName).delete().eq('id', id);
+
+    if (error) {
+      announce(`Gagal menghapus data: ${error.message}`);
       return;
     }
+
     announce(`${entityNames[view]} berhasil dihapus.`);
+    store = await loadStore();
     render();
   }
 
@@ -584,5 +601,6 @@
     }
   });
 
+  store = await loadStore();
   render();
 })();
