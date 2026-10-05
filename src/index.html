@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f4f6f1">
+  <title>Persediaan | Sistem Informasi</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <div class="app-shell" id="appShell">
+    <button class="nav-backdrop" id="navBackdrop" type="button" aria-label="Tutup navigasi"></button>
+    <aside class="sidebar" id="sidebar" aria-label="Navigasi utama">
+      <a class="wordmark" href="#ringkasan" data-view="ringkasan" aria-label="Persediaan, ringkasan">
+        <span class="wordmark__name">Persediaan</span>
+        <span class="wordmark__caption">Sistem informasi</span>
+      </a>
+
+      <p class="nav-label">Ruang kerja</p>
+      <nav class="main-nav">
+        <button class="nav-link is-active" type="button" data-view="ringkasan" aria-current="page">
+          <span class="nav-link__mark" aria-hidden="true">01</span>
+          <span>Ringkasan</span>
+        </button>
+        <button class="nav-link" type="button" data-view="barang">
+          <span class="nav-link__mark" aria-hidden="true">02</span>
+          <span>Barang</span>
+        </button>
+        <button class="nav-link" type="button" data-view="kategori">
+          <span class="nav-link__mark" aria-hidden="true">03</span>
+          <span>Kategori</span>
+        </button>
+        <button class="nav-link" type="button" data-view="pemasok">
+          <span class="nav-link__mark" aria-hidden="true">04</span>
+          <span>Pemasok</span>
+        </button>
+        <button class="nav-link" type="button" data-view="masuk">
+          <span class="nav-link__mark" aria-hidden="true">05</span>
+          <span>Barang masuk</span>
+        </button>
+        <button class="nav-link" type="button" data-view="keluar">
+          <span class="nav-link__mark" aria-hidden="true">06</span>
+          <span>Barang keluar</span>
+        </button>
+      </nav>
+
+      <div class="sidebar__foot">
+        <span class="storage-indicator" aria-hidden="true"></span>
+        <span>Tersimpan di perangkat ini</span>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <button class="menu-toggle" id="menuToggle" type="button" aria-label="Buka navigasi" aria-expanded="false" aria-controls="sidebar">
+          <span></span><span></span><span></span>
+        </button>
+        <p class="topbar__context">Sistem Informasi Persediaan <span>/</span> <span id="breadcrumbCurrent">Ringkasan</span></p>
+        <p class="topbar__date" id="todayLabel"></p>
+      </header>
+
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow" id="pageEyebrow">KENDALI OPERASIONAL</p>
+          <h1 id="pageTitle">Ringkasan</h1>
+          <p class="page-description" id="pageDescription">Pantau posisi barang dan pergerakan persediaan.</p>
+        </div>
+        <button class="button button--primary" id="addRecordButton" type="button">
+          <span class="button__plus" aria-hidden="true">+</span>
+          <span id="addButtonLabel">Tambah barang</span>
+        </button>
+      </div>
+
+      <div class="status-message" id="statusMessage" role="status" aria-live="polite"></div>
+      <div id="pageContent"></div>
+      <footer class="page-footer">
+        <span>Data disimpan pada browser yang sedang digunakan.</span>
+        <span class="footer-version">ERD · 5 entitas</span>
+      </footer>
+    </main>
+  </div>
+
+  <dialog class="record-dialog" id="recordDialog" aria-labelledby="dialogTitle">
+    <form class="record-form" id="recordForm" novalidate>
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow">DATA PERSEDIAAN</p>
+          <h2 id="dialogTitle">Tambah data</h2>
+        </div>
+        <button class="icon-button" id="closeDialogButton" type="button" aria-label="Tutup formulir">×</button>
+      </div>
+      <div class="form-fields" id="formFields"></div>
+      <p class="form-error" id="formError" role="alert"></p>
+      <div class="dialog-actions">
+        <button class="button button--quiet" id="cancelDialogButton" type="button">Batal</button>
+        <button class="button button--primary" type="submit" id="saveRecordButton">Simpan data</button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>
