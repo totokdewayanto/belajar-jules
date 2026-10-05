@@ -1,7 +1,7 @@
 (async () => {
   // Supabase Configuration
-  const SUPABASE_URL = 'https://YOUR_SUPABASE_URL.supabase.co';
-  const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+  const SUPABASE_URL = 'https://goivkbzwrdpomkeudtdf.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdvaXZrYnp3cmRwb21rZXVkdGRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTExNTQyNjMsImV4cCI6MjEwNjczMDI2M30.pAl_U65O-IMVNuABlWlQK2_GYP6nBfhLPs-wjAL4Z5E';
   const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   const STORAGE_KEY = 'persediaan-erd-v1';
